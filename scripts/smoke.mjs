@@ -158,6 +158,17 @@ check('inheritance letter shows', !!$('.letter'));
 click(byText('.modal .btn', 'Take up the ledger'), 'letter close');
 await wait(120);
 
+// ---------------------------------------------------------------- onboarding step 0: letter -> market hint
+{
+  const api = window.__caravanserai;
+  check('initial tutorial step is 0', api.game.state.tutorial === 0);
+  check('market shows "First lesson" hint', ($('.screen[data-screen="market"]')?.textContent ?? '').includes('First lesson'));
+
+  click($('.rail-btn[data-screen="map"]'));
+  await wait(60);
+  check('map shows "Your first road" panel during onboarding', ($('.map-side')?.textContent ?? '').includes('Your first road'));
+}
+
 // ---------------------------------------------------------------- shell
 check('shell mounted', !!$('.shell'));
 check('rail has 9 screens', $$('.rail-btn').length >= 9);
@@ -224,6 +235,7 @@ if (buyBtn) {
   await wait();
   const toasts = $$('.toast').map((t) => t.textContent);
   check('buy produced a toast', toasts.some((t) => /Bought|Cannot|sols/.test(t)));
+  check('carrying cargo updates market hint to "Second step"', ($('.screen[data-screen="market"]')?.textContent ?? '').includes('Second step'));
 }
 const sellBtn = enabled('.market-good .btn', 'Sell');
 if (sellBtn) {
@@ -311,13 +323,22 @@ if (canvas) {
     await wait(80);
     check('journey bar visible on road', !!$('.journey-bar'));
     scanGarbage('journey');
+    let firstEncounterName = '';
     for (let i = 0; i < 8; i++) {
       click($('.btn-advance'));
       await wait(80);
+      if ($('.modal.encounter h2') && !firstEncounterName) {
+        firstEncounterName = $('.modal.encounter h2').textContent.trim();
+      }
       encounters += await dismissEncounterIfAny();
       if (api.game.state.player.loc.kind === 'city') break;
     }
+    check('first journey has scheduled friendly rival encounter', firstEncounterName.includes('Another Wagon'));
     check('arrived at destination', api.game.state.player.loc.kind === 'city');
+    check('tutorial advanced to step 2 upon arriving at second city', api.game.state.tutorial >= 2);
+    click($('.rail-btn[data-screen="map"]'));
+    await wait(60);
+    check('"Your first road" disappears after onboarding step 2', !($('.map-side')?.textContent ?? '').includes('Your first road'));
     scanGarbage('post-travel');
   }
 }

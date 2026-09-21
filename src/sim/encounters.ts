@@ -165,15 +165,15 @@ export function rollEncounter(s: GameState, rng: Rng, road: Road): Encounter | n
   base *= 1 - Math.min(s.player.fame, 60) / 220;
   if ((s.flags.paidTolls ?? 0) >= 3) base += 0.07; // word travels: an easy mark
   if ((s.flags.crime ?? 0) >= 3) base += 0.06; // patrols know your face
-  if ((s.flags.banditToken ?? 0) > s.day) base *= 0.55;
-  if (!rng.chance(clamp(base, 0.02, 0.75)) && !hasSalvage) return null;
-
-  // Scheduled tutorial encounter.
+  // Scheduled tutorial encounter (first journey guarantees a friendly rival).
   if (s.flags.scheduledEncounter === 1) {
     s.flags.scheduledEncounter = 0;
     const rival = rivalCaravan(s, rng, road);
     if (rival) return rival;
   }
+
+  if ((s.flags.banditToken ?? 0) > s.day) base *= 0.55;
+  if (!rng.chance(clamp(base, 0.02, 0.75)) && !hasSalvage) return null;
 
   const agentsOnRoad = s.agents.filter((a) => a.alive && a.loc.kind === 'road' && a.loc.roadId === road.id);
   const weights: [string, number][] = [
