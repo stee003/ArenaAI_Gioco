@@ -336,6 +336,56 @@ check('localStorage save exists', !!window.localStorage.getItem('caravanserai.sa
 
 // ---------------------------------------------------------------- results
 await wait(100);
+// ---- save export/import: round-trip + untrusted-input hardening ----------
+{
+  const api = window.__caravanserai;
+  const pname = api.game.state.player.name;
+  const day0 = api.game.state.day;
+  const gold0 = Math.floor(api.game.state.player.gold);
+
+  click($('.brand')); // menu screen
+  await wait(80);
+  click(byText('.screen button', 'Export as text'));
+  await wait(80);
+  const saveText = $('.modal textarea')?.value ?? '';
+  check('export produced a save string', saveText.length > 500);
+  click(byText('.modal .btn', 'Close'));
+  await wait(60);
+
+  // tamper: smuggle markup into the player's name (imported saves are
+  // untrusted input that reaches innerHTML via toasts/chronicle)
+  const decoded = decodeURIComponent(escape(window.atob(saveText)));
+  const evilName = '<img src=x onerror=window.__pwned=1>Bad';
+  const injected = decoded.split(`"name":"${pname}"`).join(`"name":"${evilName}"`);
+  check('injection payload landed in save text', injected !== decoded);
+  const reencoded = window.btoa(unescape(encodeURIComponent(injected)));
+
+  click($('.brand'));
+  await wait(60);
+  click(byText('.screen button', 'Import from text'));
+  await wait(80);
+  $('.modal textarea').value = reencoded;
+  click(byText('.modal .btn', 'Import & resume'));
+  await wait(150);
+  const st = api.game.state;
+  check('import resumed the same world (day/gold intact)', st.day === day0 && Math.floor(st.player.gold) === gold0);
+  // angle brackets are stripped, so any residue is inert text, never markup
+  check('injected markup stripped from imported name', !/[<>&]/.test(st.player.name));
+  check('no script ran from the imported save', !window.__pwned);
+
+  // garbage import is refused without destroying the running game
+  click($('.brand'));
+  await wait(60);
+  click(byText('.screen button', 'Import from text'));
+  await wait(80);
+  $('.modal textarea').value = 'this is not a ledger';
+  click(byText('.modal .btn', 'Import & resume'));
+  await wait(100);
+  check('garbage import refused, game intact', api.game.state.day === day0 && $$('.toast').some((t) => /not a ledger/.test(t.textContent)));
+  click(byText('.modal .btn', 'Cancel'));
+  await wait(40);
+}
+
 console.log('\n================ SMOKE RESULTS ================');
 console.log(`checks: ${checks}, failures: ${failures.length}, runtime errors: ${errors.length}`);
 for (const f of failures) console.log('FAIL:', f);
