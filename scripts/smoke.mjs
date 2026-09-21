@@ -386,6 +386,34 @@ await wait(100);
   await wait(40);
 }
 
+// ---- modal accessibility: dialog focus management ------------------------
+{
+  const api = window.__caravanserai;
+  api.shell.settings.confirmTrades = true;
+  click($('.rail-btn[data-screen="market"]'));
+  await wait(80);
+  const buyBtn = $$('.market-good .trade-cell .btn').find((b) => b.textContent.includes('Buy') && !b.disabled);
+  check('an enabled Buy button exists', !!buyBtn);
+  buyBtn.focus(); // real browsers focus a button on mousedown; jsdom does not
+  click(buyBtn);
+  await wait(80);
+  const modal = $('.modal[role="dialog"]');
+  check('modal is a dialog (role/aria-modal)', !!modal && modal.getAttribute('aria-modal') === 'true');
+  check('focus moved into the dialog', !!modal && modal.contains(window.document.activeElement));
+
+  // Tab from the last focusable wraps to the first
+  const focusables = [...modal.querySelectorAll('button, input, textarea')].filter((el) => !el.hasAttribute('disabled'));
+  focusables[focusables.length - 1].focus();
+  modal.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+  check('Tab wraps to first focusable', window.document.activeElement === focusables[0]);
+
+  // Escape closes and returns focus to the trigger
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  await wait(60);
+  check('Escape closed the modal', !$('.modal-veil'));
+  check('focus restored to the trigger', window.document.activeElement === buyBtn);
+}
+
 console.log('\n================ SMOKE RESULTS ================');
 console.log(`checks: ${checks}, failures: ${failures.length}, runtime errors: ${errors.length}`);
 for (const f of failures) console.log('FAIL:', f);

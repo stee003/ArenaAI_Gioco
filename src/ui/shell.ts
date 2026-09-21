@@ -328,23 +328,45 @@ class Shell {
     cls?: string; wide?: boolean; persistent?: boolean; onClose?: () => void;
   }): () => void {
     this.closeModal();
+    const prevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const veil = h('div', {
       class: 'modal-veil',
       onclick: (e) => { if (e.target === veil && !opts.persistent) close(); },
     });
-    const modal = h('div', { class: `modal ${opts.cls ?? ''} ${opts.wide ? 'wide' : ''}` },
+    const modal = h('div', {
+      class: `modal ${opts.cls ?? ''} ${opts.wide ? 'wide' : ''}`,
+      role: 'dialog', 'aria-modal': 'true', 'aria-label': opts.title ?? 'Dialog',
+    },
       opts.title ? h('div', { class: 'h2' }, opts.icon ? h('span', { html: icon(opts.icon, 20) }) : null, opts.title) : null,
       ...opts.body,
       opts.actions?.length ? h('div', { class: 'modal-actions' }, ...opts.actions) : null,
     );
+
+    // Keyboard: focus moves into the dialog, Tab cycles within it, and
+    // closing hands focus back to whatever opened it.
+    const focusables = (): HTMLElement[] =>
+      [...modal.querySelectorAll<HTMLElement>('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => !el.hasAttribute('disabled'));
+    modal.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const f = focusables();
+      if (!f.length) return;
+      const active = document.activeElement;
+      if (!modal.contains(active)) { e.preventDefault(); f[0].focus(); return; }
+      if (e.shiftKey && active === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && active === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+
     veil.appendChild(modal);
     this.modalHost.appendChild(veil);
     this.activeModal = { veil, persistent: opts.persistent ?? false };
+    (modal.querySelector<HTMLElement>('[data-autofocus]') ?? focusables()[0])?.focus();
 
     const close = (): void => {
       if (this.activeModal?.veil !== veil) return;
       veil.remove();
       this.activeModal = null;
+      if (!this.activeModal && prevFocus?.isConnected) prevFocus.focus();
       opts.onClose?.();
     };
     return close;
