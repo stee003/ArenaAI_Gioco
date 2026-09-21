@@ -435,6 +435,36 @@ await wait(100);
   check('focus restored to the trigger', window.document.activeElement === buyBtn);
 }
 
+// ---- retirement & Hall of Legend lifecycle -------------------------------
+{
+  const api = window.__caravanserai;
+  const retiredName = api.game.state.player.name;
+
+  click($('.rail-btn[data-screen="menu"]'));
+  await wait(60);
+  const retireBtn = byText('.screen button', 'Retire & enter the Hall');
+  check('retire button exists in menu', !!retireBtn);
+  click(retireBtn);
+  await wait(80);
+  const confirmRetire = byText('.modal .btn.danger', 'Lay down the ledger');
+  check('retire confirmation dialog opened', !!confirmRetire);
+  click(confirmRetire);
+  await wait(120);
+
+  check('retirement returns smoothly to title screen', !!$('.title-name'));
+  check('active save file deleted on retirement', !window.localStorage.getItem('caravanserai.save.v3'));
+  check('Hall of Legend button shows shelved life count (1)', !!byText('button', 'Hall of Legend (1)'));
+
+  click(byText('button', 'Hall of Legend (1)'));
+  await wait(80);
+  const hallText = $('.modal')?.textContent ?? '';
+  check('Hall of Legend lists the retired merchant by name', hallText.includes(retiredName));
+  check('Hall of Legend displays an epitaph and rank', hallText.includes('Peddler') || hallText.includes('road'));
+  click(byText('.modal .btn', 'Close'));
+  await wait(60);
+  check('legend modal closed', !$('.modal-veil'));
+}
+
 console.log('\n================ SMOKE RESULTS ================');
 console.log(`checks: ${checks}, failures: ${failures.length}, runtime errors: ${errors.length}`);
 for (const f of failures) console.log('FAIL:', f);

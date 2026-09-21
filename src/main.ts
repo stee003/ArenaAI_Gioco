@@ -162,6 +162,7 @@ function showLegendHall(): void {
 // -------------------------------------------------------------------- shell
 
 function launchShell(): void {
+  shell.onExit = () => showTitle();
   shell.init(root, SCREENS);
   window.addEventListener('beforeunload', () => {
     const s = game.state;

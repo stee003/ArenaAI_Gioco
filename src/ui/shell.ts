@@ -62,6 +62,19 @@ class Shell {
   /** Notes from the most recent advanceDay, shown in the road journal. */
   lastNotes: string[] = [];
   lastDay = 0;
+  onExit?: () => void;
+
+  exitToTitle(): void {
+    this.closeModal();
+    this.current?.unmount?.();
+    this.current = null;
+    this.stopTicker();
+    if (this.onExit) {
+      this.onExit();
+    } else if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+      try { window.location.reload(); } catch { /* ignore jsdom */ }
+    }
+  }
 
   // ---------------------------------------------------------------- bootstrap
 

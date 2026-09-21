@@ -191,7 +191,7 @@ function retirePanel(): Child {
           });
           deleteSave();
           audio.play('stamp');
-          window.location.reload();
+          shell.exitToTitle();
         },
       }),
     }, 'Retire & enter the Hall'),
