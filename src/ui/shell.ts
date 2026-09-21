@@ -55,7 +55,7 @@ class Shell {
   private unsubs: (() => void)[] = [];
   private tickerTimer = 0;
   private tickerIdx = 0;
-  private activeModal: { veil: HTMLElement; persistent: boolean } | null = null;
+  private activeModal: { veil: HTMLElement; persistent: boolean; close: () => void } | null = null;
   private encounterOpen = false;
   settings: SavedSettings = loadSettings();
 
@@ -357,26 +357,25 @@ class Shell {
       else if (!e.shiftKey && active === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
     });
 
-    veil.appendChild(modal);
-    this.modalHost.appendChild(veil);
-    this.activeModal = { veil, persistent: opts.persistent ?? false };
-    (modal.querySelector<HTMLElement>('[data-autofocus]') ?? focusables()[0])?.focus();
-
     const close = (): void => {
       if (this.activeModal?.veil !== veil) return;
       veil.remove();
       this.activeModal = null;
-      if (!this.activeModal && prevFocus?.isConnected) prevFocus.focus();
+      if (prevFocus?.isConnected) prevFocus.focus();
       opts.onClose?.();
     };
+
+    veil.appendChild(modal);
+    this.modalHost.appendChild(veil);
+    this.activeModal = { veil, persistent: opts.persistent ?? false, close };
+    (modal.querySelector<HTMLElement>('[data-autofocus]') ?? focusables()[0])?.focus();
     return close;
   }
 
   closeModal(): void {
-    if (this.activeModal && !this.activeModal.persistent) {
-      this.activeModal.veil.remove();
-      this.activeModal = null;
-    }
+    // Route through the modal's own close so focus restoration and onClose
+    // run on every dismissal path (Escape, veil click, programmatic).
+    if (this.activeModal && !this.activeModal.persistent) this.activeModal.close();
   }
 
   confirm(opts: { title: string; text: Child; confirmLabel?: string; danger?: boolean; onConfirm: () => void }): void {
