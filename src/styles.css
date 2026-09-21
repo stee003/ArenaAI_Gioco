@@ -968,9 +968,12 @@ input.inp:focus { outline: none; border-color: var(--gold); }
   .rail {
     flex-direction: row; justify-content: space-around; align-items: stretch;
     padding: 4px 6px; gap: 2px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
     border-right: none; border-top: var(--edge-gold);
     overflow-x: auto; overflow-y: hidden;
   }
+  .topbar { padding-top: env(safe-area-inset-top, 0px); }
+  .map-canvas { touch-action: manipulation; }
   .rail-btn { padding: 7px 6px 5px; font-size: 9px; min-width: 56px; }
   .rail-btn.active::before { left: 15%; right: 15%; top: auto; bottom: -4px; width: auto; height: 3px; }
   .rail-sep { display: none; }
